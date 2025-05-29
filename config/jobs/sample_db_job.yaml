@@ -1,0 +1,48 @@
+job_name: postgres_to_parquet
+description: Extract data from PostgreSQL, transform it, and save to Parquet
+
+source:
+  type: database
+  options:
+    db_type: postgresql
+    host: localhost
+    port: 5432
+    database: mydb
+    # Either specify a table
+    table: users
+    # Or use a custom query
+    # query: "SELECT * FROM users WHERE created_at >= current_date - interval '1 day'"
+    
+    # Optional: Provide credentials in config (otherwise will look for environment variables)
+    # username: myuser
+    # password: mypassword
+    
+    # Additional JDBC options
+    jdbc_options:
+      fetchsize: 10000
+      batchsize: 10000
+
+transformations:
+  - type: filter
+    options:
+      condition: "age >= 18"
+  
+  - type: add_column
+    options:
+      column_name: extraction_date
+      expression: "current_date()"
+
+target:
+  type: parquet
+  options:
+    path: data/output/users
+    mode: overwrite
+    partitionBy: 
+      - extraction_date
+
+spark_config:
+  app_name: DatabaseETLJob
+  master: local[*]
+  configs:
+    spark.sql.shuffle.partitions: 10
+    spark.executor.memory: 2g 

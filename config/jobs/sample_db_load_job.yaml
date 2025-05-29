@@ -1,0 +1,50 @@
+job_name: parquet_to_mysql
+description: Load processed data from Parquet into MySQL database
+
+source:
+  type: parquet
+  options:
+    path: data/output/processed_data
+
+transformations:
+  - type: add_column
+    options:
+      column_name: load_timestamp
+      expression: "current_timestamp()"
+
+target:
+  type: database
+  options:
+    db_type: mysql
+    host: localhost
+    port: 3306
+    database: analytics_db
+    table: processed_users
+    
+    # Write mode: append/overwrite/error/ignore
+    mode: append
+    
+    # Optional: Schema evolution
+    merge_schema: true
+    
+    # Optional: Provide credentials in config (otherwise will look for environment variables)
+    # username: myuser
+    # password: mypassword
+    
+    # Performance tuning options
+    jdbc_options:
+      batchsize: 1000
+      numPartitions: 4
+      isolationLevel: REPEATABLE_READ
+      
+      # MySQL-specific options
+      rewriteBatchedStatements: true
+      useServerPrepStmts: true
+      cachePrepStmts: true
+
+spark_config:
+  app_name: DatabaseLoadJob
+  master: local[*]
+  configs:
+    spark.sql.shuffle.partitions: 10
+    spark.executor.memory: 2g 

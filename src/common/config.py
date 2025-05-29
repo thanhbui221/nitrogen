@@ -1,0 +1,33 @@
+from dataclasses import dataclass
+from typing import List, Dict, Any
+import yaml
+from dataclasses_json import dataclass_json
+
+@dataclass_json
+@dataclass
+class SparkConfig:
+    app_name: str
+    master: str
+    configs: Dict[str, Any]
+
+@dataclass_json
+@dataclass
+class ComponentConfig:
+    type: str
+    options: Dict[str, Any]
+
+@dataclass_json
+@dataclass
+class JobConfig:
+    job_name: str
+    description: str
+    source: ComponentConfig
+    transformations: List[ComponentConfig]
+    target: ComponentConfig
+    spark_config: SparkConfig
+
+def load_job_config(config_path: str) -> JobConfig:
+    """Load and parse job configuration from YAML file"""
+    with open(config_path, 'r') as f:
+        config_dict = yaml.safe_load(f)
+    return JobConfig.from_dict(config_dict) 
