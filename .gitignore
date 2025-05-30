@@ -36,9 +36,4 @@ nitrogen.env-info.production
 nitrogen.env-info.test
 nitrogen.env-info.test.local
 
-setup_env.ps1
-setup_env.ps1.local
-setup_env.ps1.development
-setup_env.ps1.production
-setup_env.ps1.test
-setup_env.ps1.test.local
+
