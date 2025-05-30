@@ -27,142 +27,115 @@ See [CHANGELOG.md](CHANGELOG.md) for a list of changes and versions.
 │   ├── factory/         # Factory pattern implementations
 │   └── main.py          # Main Spark application entry point
 ├── tests/               # Unit tests
-├── create_package.py    # Script to create source distribution
+├── create_deps_zip.py    # Script to create dependencies package
 ├── Dockerfile          # Docker image definition
 ├── docker-entrypoint.sh # Docker entry point script
 └── requirements.txt     # Python dependencies
 ```
 
-## Local Setup
+## Environment Setup
 
-1. Create a virtual environment:
+### 1. Configure Environment Variables
+
+First, copy the environment template:
+
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: .\venv\Scripts\activate
+# On Windows
+copy .env.template .env
+
+# On Linux/MacOS
+cp .env.template .env
 ```
 
-2. Install dependencies:
+Then edit the `.env` file with your specific paths:
+
 ```bash
-pip install -r requirements.txt
+# Java Configuration
+JAVA_HOME=C:\Program Files\Java\jdk-11  # Windows example
+# JAVA_HOME=/usr/lib/jvm/java-11        # Linux example
+
+# Spark Configuration
+SPARK_HOME=D:\spark-3.5.0-bin-hadoop3   # Windows example
+# SPARK_HOME=/opt/spark                  # Linux example
+
+# Hadoop Configuration (for Windows)
+HADOOP_HOME=D:\hadoop-3.3.6
+
+# Path Updates
+# Windows: Will be handled by setup_env.ps1
+# Linux: Add to PATH in .env
+PATH=$SPARK_HOME/bin:$JAVA_HOME/bin:$PATH
+
+# Python Configuration
+PYTHONPATH=$PYTHONPATH:${PWD}/src
+PYSPARK_PYTHON=python
+PYSPARK_DRIVER_PYTHON=python
+
+# Optional: Spark Configurations
+SPARK_CONF_DIR=${PWD}/conf
+SPARK_LOCAL_IP=localhost
+SPARK_LOCAL_DIRS=/tmp
 ```
 
-## Docker Deployment
+### 2. Apply Environment Configuration
 
-### Building the Image
-
-Build the Docker image with all dependencies included:
-
-```bash
-docker build -t etl-framework .
+#### On Windows:
+Run the PowerShell setup script:
+```powershell
+.\setup_env.ps1
 ```
 
-### Running ETL Jobs
-
-1. **Standard ETL Job**:
+#### On Linux/MacOS:
+Source the environment file:
 ```bash
-docker run --rm \
-    -v /path/to/your/jobs:/app/jobs \
-    -v /path/to/your/data:/app/data \
-    -e SPARK_MASTER=local[4] \
-    -e SPARK_DRIVER_MEMORY=4g \
-    -e SPARK_EXECUTOR_MEMORY=2g \
-    -e SPARK_EXECUTOR_CORES=2 \
-    etl-framework /app/jobs/your_job.yaml
+source .env
 ```
 
-2. **Database ETL Job**:
+### 3. Verify Setup
 ```bash
-docker run --rm \
-    -v /path/to/your/jobs:/app/jobs \
-    -v /path/to/your/data:/app/data \
-    -v /path/to/your/.env:/app/.env \
-    --network host \
-    -e SPARK_MASTER=local[4] \
-    -e SPARK_DRIVER_MEMORY=4g \
-    etl-framework /app/jobs/db_job.yaml
-```
+# Verify Java
+java -version
 
-All Spark configuration is done through environment variables, with sensible defaults if not specified:
+# Verify Spark
+spark-submit --version
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| SPARK_MASTER | local[*] | Spark master URL |
-| SPARK_DRIVER_MEMORY | 1g | Driver process memory |
-| SPARK_EXECUTOR_MEMORY | 1g | Executor process memory |
-| SPARK_EXECUTOR_CORES | 1 | Number of cores per executor |
-
-### Volume Mounts
-
-The container expects these volume mounts:
-- `-v /path/to/your/jobs:/app/jobs` : Job configuration files
-- `-v /path/to/your/data:/app/data` : Data files for processing
-- `-v /path/to/your/.env:/app/.env` : Environment file (for database credentials)
-
-### Network Configuration
-
-For database connections:
-- Use `--network host` to connect to databases on the host machine
-- Use Docker networks (e.g., `--network my-network`) to connect to databases in other containers
-
-### Included Components
-
-The Docker image includes:
-- PySpark 3.5.0
-- Python 3
-- Common JDBC drivers:
-  - PostgreSQL (postgresql-42.6.0.jar)
-  - MySQL (mysql-connector-j-8.0.33.jar)
-- All required Python dependencies
-
-### Examples
-
-**Processing local CSV files**:
-```bash
-docker run --rm \
-    -v ./jobs:/app/jobs \
-    -v ./data:/app/data \
-    etl-framework /app/jobs/process_csv.yaml
-```
-
-**Loading data from PostgreSQL to MySQL**:
-```bash
-docker run --rm \
-    -v ./jobs:/app/jobs \
-    -v ./.env:/app/.env \
-    --network host \
-    etl-framework /app/jobs/db_migration.yaml
-```
-
-**Processing large datasets**:
-```bash
-docker run --rm \
-    -v ./jobs:/app/jobs \
-    -v ./data:/app/data \
-    -e SPARK_DRIVER_MEMORY=8g \
-    -e SPARK_EXECUTOR_MEMORY=4g \
-    -e SPARK_EXECUTOR_CORES=4 \
-    etl-framework /app/jobs/large_dataset.yaml
+# Verify Python
+python -c "import pyspark; print(pyspark.__version__)"
 ```
 
 ## Local Development
 
 ### 1. Environment Setup
 
+First, set up your Python virtual environment and install dependencies:
+
 ```bash
-# Create and activate virtual environment
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: .\venv\Scripts\activate
 
-# Install dependencies
+# Activate virtual environment
+# On Windows:
+.\venv\Scripts\activate
+# On Unix/MacOS:
+source venv/bin/activate
+
+# Install required packages
 pip install -r requirements.txt
-
-# Package the source code
-python create_package.py
 ```
 
-### 2. Download JDBC Drivers (if needed)
+### 2. Package Dependencies
 
-Create a `drivers` directory and download the required JDBC drivers:
+After installing the required packages, create the dependencies package for Spark:
+
+```bash
+python create_deps_zip.py
+```
+
+This creates `deps.zip` containing all necessary dependencies for Spark workers.
+
+### 3. Download JDBC Drivers (Optional)
+
+If you need database connectivity, download the required JDBC drivers:
 
 ```bash
 mkdir -p drivers
@@ -172,14 +145,16 @@ wget https://jdbc.postgresql.org/download/postgresql-42.6.0.jar -O drivers/postg
 wget https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-j-8.0.33.jar -O drivers/mysql-connector-j-8.0.33.jar
 ```
 
-### 3. Running Jobs Locally
+### 4. Running Jobs Locally
+
+Now you can run ETL jobs using `spark-submit`. Here are some common scenarios:
 
 #### Basic ETL Job
 ```bash
 spark-submit \
     --master local[4] \
     --driver-memory 4g \
-    --py-files src.zip \
+    --py-files deps.zip \
     src/main.py config/jobs/your_job.yaml
 ```
 
@@ -190,7 +165,7 @@ spark-submit \
     --driver-memory 4g \
     --jars drivers/postgresql-42.6.0.jar \
     --driver-class-path drivers/postgresql-42.6.0.jar \
-    --py-files src.zip \
+    --py-files deps.zip \
     src/main.py config/jobs/db_job.yaml
 ```
 
@@ -202,7 +177,7 @@ spark-submit \
 | --driver-memory | Memory for driver process | 4g, 8g |
 | --executor-memory | Memory per executor | 2g, 4g |
 | --executor-cores | Cores per executor | 2, 4 |
-| --py-files | Additional Python files | src.zip |
+| --py-files | Additional Python files | deps.zip |
 | --jars | Additional JAR files | drivers/postgresql-42.6.0.jar |
 | --packages | Maven coordinates | org.postgresql:postgresql:42.6.0 |
 
@@ -212,7 +187,7 @@ spark-submit \
 ```bash
 spark-submit \
     --master local[2] \
-    --py-files src.zip \
+    --py-files deps.zip \
     src/main.py config/jobs/process_csv.yaml
 ```
 
@@ -223,7 +198,7 @@ spark-submit \
     --driver-memory 4g \
     --jars drivers/postgresql-42.6.0.jar \
     --driver-class-path drivers/postgresql-42.6.0.jar \
-    --py-files src.zip \
+    --py-files deps.zip \
     src/main.py config/jobs/postgres_extract.yaml
 ```
 
@@ -234,7 +209,7 @@ spark-submit \
     --driver-memory 8g \
     --executor-memory 4g \
     --executor-cores 4 \
-    --py-files src.zip \
+    --py-files deps.zip \
     src/main.py config/jobs/large_dataset.yaml
 ```
 
@@ -245,7 +220,7 @@ spark-submit \
     --driver-memory 4g \
     --jars drivers/postgresql-42.6.0.jar,drivers/mysql-connector-j-8.0.33.jar \
     --driver-class-path drivers/postgresql-42.6.0.jar:drivers/mysql-connector-j-8.0.33.jar \
-    --py-files src.zip \
+    --py-files deps.zip \
     src/main.py config/jobs/db_migration.yaml
 ```
 
@@ -256,7 +231,7 @@ spark-submit \
 spark-submit \
     --master local[*] \
     --conf "spark.driver.extraJavaOptions=-Dlog4j.configuration=file:log4j-debug.properties" \
-    --py-files src.zip \
+    --py-files deps.zip \
     src/main.py config/jobs/your_job.yaml
 ```
 
@@ -265,38 +240,38 @@ spark-submit \
 # Start PySpark shell with your code
 pyspark \
     --driver-memory 4g \
-    --py-files src.zip
+    --py-files deps.zip
 ```
 
 ## Usage
 
 ### Preparing for Execution
 
-Before running jobs, especially in distributed mode, you need to package the source code:
+Before running jobs, especially in distributed mode, you need to package the dependencies:
 
 ```bash
-# Create the source distribution package
-python create_package.py
+# Create the dependencies package
+python create_deps_zip.py
 ```
 
-This creates `src.zip` containing all the Python source code, which Spark will distribute to worker nodes.
+This creates `deps.zip` containing all the Python dependencies, which Spark will distribute to worker nodes.
 
 ### Running ETL Jobs
 
-Use `spark-submit` to run ETL jobs. The `--py-files` option is crucial for distributed execution as it ensures all worker nodes have access to the complete codebase:
+Use `spark-submit` to run ETL jobs. The `--py-files` option is crucial for distributed execution as it ensures all worker nodes have access to the complete codebase and dependencies:
 
 ```bash
 spark-submit \
     --master <spark-master-url> \
     --name "ETL Job" \
-    --py-files src.zip \
+    --py-files deps.zip \
     src/main.py config/jobs/your_job.yaml
 ```
 
 The `--py-files` option serves several purposes:
-- Distributes the source code to all Spark worker nodes
+- Distributes the dependencies to all Spark worker nodes
 - Maintains the proper Python package structure
-- Ensures all custom classes (extractors, transformers, loaders) are available everywhere
+- Ensures all required packages are available everywhere
 
 Common execution scenarios:
 
@@ -304,7 +279,7 @@ Common execution scenarios:
 # Local mode with 4 cores
 spark-submit \
     --master local[4] \
-    --py-files src.zip \
+    --py-files deps.zip \
     src/main.py config/jobs/your_job.yaml
 
 # Cluster mode with specific configs
@@ -315,19 +290,19 @@ spark-submit \
     --executor-memory 2g \
     --executor-cores 2 \
     --num-executors 3 \
-    --py-files src.zip \
+    --py-files deps.zip \
     src/main.py config/jobs/your_job.yaml
 ```
 
 ### Database Jobs
 
-For jobs involving database operations, include both the source distribution and JDBC driver:
+For jobs involving database operations, include both the dependencies and JDBC driver:
 
 ```bash
 # PostgreSQL example
 spark-submit \
     --master local[4] \
-    --py-files src.zip \
+    --py-files deps.zip \
     --jars ./drivers/postgresql-42.6.0.jar \
     --driver-class-path ./drivers/postgresql-42.6.0.jar \
     src/main.py config/jobs/postgres_job.yaml
@@ -335,7 +310,7 @@ spark-submit \
 # MySQL example
 spark-submit \
     --master local[4] \
-    --py-files src.zip \
+    --py-files deps.zip \
     --jars ./drivers/mysql-connector-j-8.0.33.jar \
     --driver-class-path ./drivers/mysql-connector-j-8.0.33.jar \
     src/main.py config/jobs/mysql_job.yaml
@@ -407,9 +382,31 @@ For database operations, consider these configuration options:
 
 ## Testing
 
-Run tests using:
+### Setting Up Test Environment
+
+1. Make sure you're in your virtual environment:
 ```bash
+# On Windows:
+.\venv\Scripts\activate
+# On Unix/MacOS:
+source venv/bin/activate
+```
+
+2. Install test dependencies:
+```bash
+pip install pytest pytest-cov
+```
+
+3. Run tests:
+```bash
+# Run all tests
 pytest tests/
+
+# Run with coverage report
+pytest --cov=src tests/
+
+# Run specific test file
+pytest tests/test_transformers.py
 ```
 
 ## Schema Management
@@ -502,11 +499,3 @@ transform:
             - product_name
             - price
 ```
-
-Each join configuration supports:
-- `right_df`: Name of the dependency DataFrame to join with
-- `join_type`: Type of join (inner, left, right, full)
-- `join_conditions`: List of column pairs to join on
-- `select`: Optional list of columns to keep after the join
-
-The joins are executed in sequence, allowing for complex data merging operations in a single transformer. 
