@@ -2,16 +2,28 @@
 
 A modular and extensible ETL framework built with PySpark, using the Factory pattern for dynamic job handling and configuration-as-code approach.
 
+[![Python Version](https://img.shields.io/badge/python-3.x-blue.svg)](https://www.python.org/downloads/)
+[![PySpark Version](https://img.shields.io/badge/pyspark-3.5.0-orange.svg)](https://spark.apache.org/docs/3.5.0/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+## Version History
+
+See [CHANGELOG.md](CHANGELOG.md) for a list of changes and versions.
+
 ## Project Structure
 
 ```
 ├── config/
 │   └── jobs/              # ETL job configurations
+├── schemas/              # Data schema definitions
+│   ├── users.json       # User data schema
+│   └── orders.json      # Order data schema
 ├── src/
 │   ├── extract/          # Source extractors
 │   ├── transform/        # Transformation logic
 │   ├── load/            # Data loaders
 │   ├── common/          # Shared utilities
+│   │   └── schema_utils.py  # Schema management utilities
 │   ├── factory/         # Factory pattern implementations
 │   └── main.py          # Main Spark application entry point
 ├── tests/               # Unit tests
@@ -398,4 +410,103 @@ For database operations, consider these configuration options:
 Run tests using:
 ```bash
 pytest tests/
-``` 
+```
+
+## Schema Management
+
+The framework includes a schema registry for managing data schemas across your ETL jobs.
+
+### Schema Definition
+
+Schemas are defined in JSON format in the `schemas/` directory. Example:
+
+```json
+{
+  "name": "users",
+  "description": "User profile data schema",
+  "version": "1.0",
+  "fields": [
+    {
+      "name": "user_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Unique identifier for the user"
+    }
+  ],
+  "partitionColumns": ["created_at"]
+}
+```
+
+### Using Schemas in Jobs
+
+```python
+from src.common.schema_utils import SchemaRegistry
+
+# Initialize schema registry
+schema_registry = SchemaRegistry()
+
+# Reading with schema enforcement
+df = spark.read.format("csv") \
+    .schema(schema_registry.get_spark_schema("users")) \
+    .load("path/to/data.csv")
+
+# Get partition columns for writing
+partition_by = schema_registry.get_partition_columns("users")
+df.write.partitionBy(*partition_by).parquet("output/path")
+
+# Validate schema compatibility
+if not schema_registry.validate_schema_compatibility("users", df):
+    raise ValueError("DataFrame does not match expected schema")
+```
+
+### Schema Features
+
+- **Type Safety**: Enforce data types and nullability
+- **Documentation**: Field descriptions and metadata
+- **Partition Management**: Define partition columns
+- **Validation**: Schema compatibility checking
+- **Evolution**: Version tracking for schema changes
+- **Reusability**: Share schemas across jobs 
+
+## Configuration Examples
+
+### Join Transformer Configuration
+
+The join transformer supports multiple sequential joins in a single transformation step. Here's an example configuration:
+
+```yaml
+transform:
+  - type: join
+    options:
+      joins:
+        # First join
+        - right_df: customers
+          join_type: left
+          join_conditions:
+            - left: customer_id
+              right: id
+          select:  # Optional: select specific columns after join
+            - order_id
+            - customer_name
+            - email
+
+        # Second join
+        - right_df: products
+          join_type: inner
+          join_conditions:
+            - left: product_id
+              right: id
+          select:
+            - order_id
+            - customer_name
+            - product_name
+            - price
+```
+
+Each join configuration supports:
+- `right_df`: Name of the dependency DataFrame to join with
+- `join_type`: Type of join (inner, left, right, full)
+- `join_conditions`: List of column pairs to join on
+- `select`: Optional list of columns to keep after the join
+
+The joins are executed in sequence, allowing for complex data merging operations in a single transformer. 

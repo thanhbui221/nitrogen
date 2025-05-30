@@ -1,24 +1,22 @@
 """
-Extractor for reading data from CSV files.
+Extractor for reading data from Parquet files.
 """
 
-from typing import Dict, Any
 from pyspark.sql import DataFrame, SparkSession
 from common.base import BaseExtractor
+from typing import Dict, Any, Optional, List, Union
 
-class CsvExtractor(BaseExtractor):
-    """Extractor for reading data from CSV files."""
+class ParquetExtractor(BaseExtractor):
+    """Extractor for reading data from Parquet files."""
     
     def __init__(self, options: Dict[str, Any]):
         """
-        Initialize CsvExtractor.
+        Initialize ParquetExtractor.
         
         Args:
             options: Configuration options including:
-                - path: Path to CSV file or directory
-                - header: Whether file has header (default: true)
-                - delimiter: Field delimiter (default: ,)
-                - schema: Optional schema definition
+                - path: Path to Parquet file or directory
+                - schema: Optional schema name or definition
                 - columns: Optional list of columns to select
         """
         super().__init__(options)
@@ -29,35 +27,31 @@ class CsvExtractor(BaseExtractor):
         
     def extract(self, spark: SparkSession) -> DataFrame:
         """
-        Read data from CSV file(s).
+        Read data from Parquet file(s).
         
         Args:
             spark: Active SparkSession to use
             
         Returns:
             DataFrame containing the read data
-            
+        
         Raises:
+            ValueError: If path is not provided
             Exception: If reading fails
         """
         try:
-            reader = spark.read.format("csv")
-            
-            # Set default options
-            reader = reader \
-                .option("header", self.options.get('header', True)) \
-                .option("delimiter", self.options.get('delimiter', ','))
+            # Start with reader
+            reader = spark.read.format("parquet")
             
             # Apply schema if provided
             schema = self.options.get('schema')
             if schema:
-                reader = reader.schema(schema)
-            
-            # Apply any additional options
-            for key, value in self.options.items():
-                if key not in ['path', 'schema', 'columns']:
-                    reader = reader.option(key, value)
-            
+                if isinstance(schema, str):
+                    # TODO: Load schema from registry by name
+                    pass
+                else:
+                    reader = reader.schema(schema)
+                    
             # Read the data
             df = reader.load(self.options['path'])
             
@@ -65,13 +59,13 @@ class CsvExtractor(BaseExtractor):
             columns = self.options.get('columns', [])
             if columns:
                 df = df.select(*columns)
-            
+                
             return df
             
         except Exception as e:
-            raise Exception(f"Failed to read CSV file from {self.options['path']}: {str(e)}")
+            raise Exception(f"Failed to read Parquet file from {self.options['path']}: {str(e)}")
             
     @staticmethod
     def name() -> str:
         """Get the name of the extractor."""
-        return "csv" 
+        return "parquet" 

@@ -1,0 +1,94 @@
+name: sample_join_job
+description: Sample ETL job demonstrating multiple joins with orders, customers, and products data
+
+dependencies:
+  customers:
+    type: csv
+    options:
+      path: data/input/customers.csv
+      header: true
+      inferSchema: true
+  
+  products:
+    type: csv
+    options:
+      path: data/input/products.csv
+      header: true
+      inferSchema: true
+
+extract:
+  type: csv
+  options:
+    path: data/input/orders.csv
+    header: true
+    inferSchema: true
+
+transform:
+  # First clean up the orders data
+  - type: column
+    options:
+      type: select
+      columns:
+        - order_id
+        - customer_id
+        - product_id
+        - order_date
+        - quantity
+
+  # Join with customers and products
+  - type: join
+    options:
+      joins:
+        # First join with customer data
+        - right_df: customers
+          join_type: left
+          join_conditions:
+            - left: customer_id
+              right: id
+          select:
+            - order_id
+            - order_date
+            - quantity
+            - customer_id
+            - name as customer_name
+            - email
+        
+        # Then join with product data
+        - right_df: products
+          join_type: inner
+          join_conditions:
+            - left: product_id
+              right: id
+          select:
+            - order_id
+            - order_date
+            - customer_name
+            - email
+            - product_name
+            - price
+            - quantity
+
+  # Add some calculated columns
+  - type: column
+    options:
+      type: add_column
+      columns:
+        - name: total_amount
+          expression: "quantity * price"
+        - name: processed_date
+          expression: "current_date()"
+
+load:
+  type: parquet
+  options:
+    path: data/output/processed_orders
+    mode: overwrite
+    partition_by: 
+      - processed_date
+
+spark_config:
+  app_name: SampleJoinJob
+  master: local[*]
+  configs:
+    spark.sql.shuffle.partitions: 10
+    spark.executor.memory: 2g 

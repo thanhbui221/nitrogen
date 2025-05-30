@@ -1,0 +1,87 @@
+{
+  "name": "orders",
+  "description": "Customer orders data schema",
+  "version": "1.0",
+  "fields": [
+    {
+      "name": "order_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Unique identifier for the order"
+    },
+    {
+      "name": "user_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Reference to users.user_id"
+    },
+    {
+      "name": "order_date",
+      "type": "timestamp",
+      "nullable": false,
+      "description": "Timestamp when the order was placed"
+    },
+    {
+      "name": "total_amount",
+      "type": "decimal(10,2)",
+      "nullable": false,
+      "description": "Total order amount"
+    },
+    {
+      "name": "currency",
+      "type": "string",
+      "nullable": false,
+      "description": "Order currency code",
+      "constraints": {
+        "length": 3
+      }
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "nullable": false,
+      "description": "Order status",
+      "constraints": {
+        "enum": ["pending", "processing", "shipped", "delivered", "cancelled"]
+      }
+    },
+    {
+      "name": "shipping_address",
+      "type": "struct",
+      "nullable": true,
+      "fields": [
+        {
+          "name": "street",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "name": "city",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "name": "country",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "name": "postal_code",
+          "type": "string",
+          "nullable": false
+        }
+      ]
+    }
+  ],
+  "partitionColumns": ["order_date"],
+  "primaryKey": ["order_id"],
+  "foreignKeys": [
+    {
+      "columns": ["user_id"],
+      "references": {
+        "table": "users",
+        "columns": ["user_id"]
+      }
+    }
+  ]
+} 

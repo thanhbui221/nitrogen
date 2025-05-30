@@ -1,17 +1,18 @@
-job_name: sample_csv_to_parquet
+name: sample_csv_to_parquet
 description: Sample ETL job that reads CSV, applies transformations, and writes to Parquet
 
-source:
+extract:
   type: csv
   options:
     path: data/input/sample.csv
     header: true
     inferSchema: true
 
-transformations:
-  - type: column_rename
+transform:
+  - type: column
     options:
-      mappings:
+      type: rename
+      columns:
         old_name: new_name
         customer_id: id
   
@@ -19,17 +20,18 @@ transformations:
     options:
       condition: "age > 18"
   
-  - type: add_column
+  - type: column
     options:
+      type: add_column
       column_name: processed_date
       expression: "current_date()"
 
-target:
+load:
   type: parquet
   options:
     path: data/output/processed_data
     mode: overwrite
-    partitionBy: 
+    partition_by: 
       - processed_date
 
 spark_config:

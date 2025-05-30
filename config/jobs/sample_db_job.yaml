@@ -1,7 +1,7 @@
-job_name: postgres_to_parquet
+name: postgres_to_parquet
 description: Extract data from PostgreSQL, transform it, and save to Parquet
 
-source:
+extract:
   type: database
   options:
     db_type: postgresql
@@ -22,22 +22,23 @@ source:
       fetchsize: 10000
       batchsize: 10000
 
-transformations:
+transform:
   - type: filter
     options:
       condition: "age >= 18"
   
-  - type: add_column
+  - type: column
     options:
+      type: add_column
       column_name: extraction_date
       expression: "current_date()"
 
-target:
+load:
   type: parquet
   options:
     path: data/output/users
     mode: overwrite
-    partitionBy: 
+    partition_by: 
       - extraction_date
 
 spark_config:

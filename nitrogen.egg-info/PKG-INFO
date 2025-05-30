@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: nitrogen
+Version: 0.1
+Requires-Dist: pyspark==3.5.0
+Requires-Dist: pyyaml==6.0.1
+Requires-Dist: python-dotenv==1.0.0
+Dynamic: requires-dist

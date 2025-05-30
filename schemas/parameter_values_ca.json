@@ -1,0 +1,128 @@
+{
+  "name": "parameter_values_ca",
+  "description": "Current Account parameter values schema",
+  "version": "1.0",
+  "fields": [
+    {
+      "name": "id",
+      "type": "string",
+      "nullable": false,
+      "description": "Unique identifier for parameter values"
+    },
+    {
+      "name": "account_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Reference to account.id"
+    },
+    {
+      "name": "accrual_precision",
+      "type": "string",
+      "nullable": true,
+      "description": "Precision for interest accrual calculations"
+    },
+    {
+      "name": "application_precision",
+      "type": "string",
+      "nullable": true,
+      "description": "Precision for interest application"
+    },
+    {
+      "name": "apply_interest_and_skip_end_of_day",
+      "type": "string",
+      "nullable": true,
+      "description": "Interest application mode",
+      "constraints": {
+        "enum": ["True", "False"]
+      }
+    },
+    {
+      "name": "denomination",
+      "type": "string",
+      "nullable": true,
+      "description": "Account currency denomination",
+      "constraints": {
+        "enum": ["USD", "VND", "AUD", "EUR", "GBP", "CAD", "HKD", "SGD", "JPY", "CNY", "INR", "NZD", "CHF", "ZAR", "MYR", "PHP", "THB", "IDR", "KRW", "VND", "HKD", "SGD", "JPY", "CNY", "INR", "NZD", "CHF", "ZAR", "MYR", "PHP", "THB", "IDR", "KRW"]
+      }
+    },
+    {
+      "name": "deposit_non_term_interest_code",
+      "type": "string",
+      "nullable": true,
+      "description": "Interest code for non-term deposits"
+    },
+    {
+      "name": "interest_application_day",
+      "type": "string",
+      "nullable": true,
+      "description": "Day of month/week for interest application"
+    },
+    {
+      "name": "interest_application_frequency",
+      "type": "string",
+      "nullable": true,
+      "description": "Frequency of interest application",
+      "constraints": {
+        "enum": ["monthly", "quarterly", "half-yearly", "annually"]
+      }
+    },
+    {
+      "name": "interest_resolve_type",
+      "type": "string",
+      "nullable": true,
+      "description": "Method for resolving interest calculations"
+    },
+    {
+      "name": "minimum_balance",
+      "type": "string",
+      "nullable": true,
+      "description": "Minimum balance requirement amount"
+    },
+    {
+      "name": "minimum_balance_requirement",
+      "type": "string",
+      "nullable": true,
+      "description": "Required minimum balance threshold"
+    },
+    {
+      "name": "overdraft_account_id",
+      "type": "string",
+      "nullable": true,
+      "description": "Reference to linked overdraft account"
+    },
+    {
+      "name": "overdraft_original_limit",
+      "type": "string",
+      "nullable": true,
+      "description": "Original overdraft limit amount"
+    },
+    {
+      "name": "overdraft_limit_block",
+      "type": "string",
+      "nullable": true,
+      "description": "Overdraft limit block status",
+      "constraints": {
+        "enum": ["True", "False"]
+      }
+    },
+    {
+      "name": "account_status_requested_by",
+      "type": "string",
+      "nullable": true,
+      "description": "Entity requesting account status change",
+      "constraints": {
+        "enum": ["bank", "customer"]
+      }
+    }
+  ],
+  "primaryKey": ["id"],
+  "foreignKeys": [
+    {
+      "columns": ["account_id"],
+      "references": {
+        "table": "account",
+        "columns": ["id"]
+      }
+    }
+  ]
+} 

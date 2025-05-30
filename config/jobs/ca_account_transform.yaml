@@ -1,0 +1,96 @@
+name: ca_account_transform
+description: Transform CA account data with parameters and blockades
+
+extract:
+  type: parquet
+  options:
+    path: data/input/raw/account
+    schema: account
+    columns:
+      - id
+      - smart_contract_version_id
+      - stakeholder_ids
+      - status
+      - source_create_timestamp
+      - source_open_timestamp
+      - permitted_denominations
+      - acct_type
+
+dependencies:
+  # Required dependencies first
+  blockade_ca:
+    type: parquet
+    options:
+      path: data/input/raw/blockade_ca
+      schema: blockade_ca
+
+  # Main dependency that needs transformation
+  parameter_values_ca:
+    type: parquet
+    options:
+      path: data/input/raw/parameter_values_ca
+      schema: parameter_values_ca
+      transform:
+        - type: parameter_value
+          options:
+            columns_to_cast:
+              - margin_interest_rate
+              - minimum_balance
+              - minimum_balance_requirement
+              - overdraft_original_limit
+            requires:
+              - blockade_ca
+
+transform:
+  # First process the account data
+  - type: column
+    options:
+      type: array
+      columns:
+        - stakeholder_ids
+        - permitted_denominations
+  
+  - type: column
+    options:
+      type: timestamp
+      columns:
+        - source_create_timestamp
+        - source_open_timestamp
+      precision: seconds
+      input_type: timestamp
+      format: yyyy-MM-dd HH:mm:ss
+  
+  - type: filter
+    options:
+      condition: "acct_type = 'CA'"
+  
+  - type: column
+    options:
+      type: rename
+      columns:
+        acct_type: alias
+
+  # Then join with parameter_values
+  - type: join
+    options:
+      joins:
+        - right_df: parameter_values_ca
+          join_type: left
+          join_conditions:
+            - left: id
+              right: account_id
+
+  # Drop redundant columns using column transformer
+  - type: column
+    options:
+      type: drop
+      columns:
+        - account_id  # Drop the redundant account_id from parameter_values_ca after join
+
+load:
+  type: parquet
+  options:
+    path: data/output/staging/ca_account
+    mode: overwrite
+    partition_by: []
+    compression: snappy 
