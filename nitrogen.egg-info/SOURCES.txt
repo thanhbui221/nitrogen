@@ -1,0 +1,8 @@
+README.md
+setup.py
+nitrogen.egg-info/PKG-INFO
+nitrogen.egg-info/SOURCES.txt
+nitrogen.egg-info/dependency_links.txt
+nitrogen.egg-info/requires.txt
+nitrogen.egg-info/top_level.txt
+tests/test_transformers.py

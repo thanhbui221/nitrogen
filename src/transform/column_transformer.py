@@ -1,31 +1,141 @@
-from src.common.base import BaseTransformer
-from src.factory.component_factory import transformer_factory
+"""
+Unified transformer for all column operations.
+"""
+
+from common.base import BaseTransformer
 from pyspark.sql import DataFrame
-from pyspark.sql.functions import expr, col
+from pyspark.sql.functions import (
+    expr, from_unixtime, to_timestamp, 
+    split, regexp_replace, when, col,
+    date_format
+)
+from pyspark.sql.types import TimestampType, LongType, StringType
+from typing import Dict, Any, List
 
-class ColumnRenameTransformer(BaseTransformer):
-    def transform(self, df: DataFrame) -> DataFrame:
-        mappings = self.options.get("mappings", {})
-        for old_name, new_name in mappings.items():
-            df = df.withColumnRenamed(old_name, new_name)
-        return df
-
-class FilterTransformer(BaseTransformer):
-    def transform(self, df: DataFrame) -> DataFrame:
-        condition = self.options.get("condition")
-        if condition:
-            return df.filter(condition)
-        return df
-
-class AddColumnTransformer(BaseTransformer):
-    def transform(self, df: DataFrame) -> DataFrame:
-        column_name = self.options.get("column_name")
-        expression = self.options.get("expression")
-        if column_name and expression:
-            return df.withColumn(column_name, expr(expression))
-        return df
-
-# Register transformers
-transformer_factory.register("column_rename", ColumnRenameTransformer)
-transformer_factory.register("filter", FilterTransformer)
-transformer_factory.register("add_column", AddColumnTransformer) 
+class ColumnTransformer(BaseTransformer):
+    """Unified transformer for all column operations."""
+    
+    VALID_TYPES = ['select', 'drop', 'rename', 'add_column', 'array', 'timestamp']
+    
+    def __init__(self, options: Dict[str, Any]):
+        """
+        Initialize transformer.
+        
+        Args:
+            options: Configuration options including:
+                - type: Operation type (select/drop/rename/add_column/array/timestamp)
+                - columns: List/Dict of columns (for select/drop/rename/array/timestamp)
+                - column_name: Name of new column (for add_column)
+                - expression: SQL expression (for add_column)
+                - precision: Timestamp precision (for timestamp)
+                - format: Optional timestamp format (for timestamp)
+                - input_type: Optional input type for timestamp ('unix' or 'timestamp', defaults to 'unix')
+        """
+        super().__init__(options)
+        
+        if 'type' not in self.options:
+            raise ValueError("'type' is required in options")
+            
+        if self.options['type'] not in self.VALID_TYPES:
+            raise ValueError(f"'type' must be one of: {', '.join(self.VALID_TYPES)}")
+            
+        # Validate type-specific required options
+        operation_type = self.options['type']
+        
+        if operation_type in ['select', 'drop', 'array', 'timestamp']:
+            if 'columns' not in self.options:
+                raise ValueError("'columns' is required for this operation type")
+                
+        elif operation_type == 'rename':
+            if 'columns' not in self.options:
+                raise ValueError("'columns' mapping is required for rename operation")
+                
+        elif operation_type == 'add_column':
+            if 'column_name' not in self.options:
+                raise ValueError("'column_name' is required for add_column operation")
+            if 'expression' not in self.options:
+                raise ValueError("'expression' is required for add_column operation")
+                
+    def transform(self, df: DataFrame, **kwargs) -> DataFrame:
+        """
+        Transform DataFrame based on the specified operation type.
+        
+        Args:
+            df: Input DataFrame
+            kwargs: Additional arguments (not used)
+            
+        Returns:
+            Transformed DataFrame
+        """
+        try:
+            operation_type = self.options['type']
+            
+            if operation_type == 'select':
+                return df.select(*self.options['columns'])
+                
+            elif operation_type == 'drop':
+                return df.drop(*self.options['columns'])
+                
+            elif operation_type == 'rename':
+                result_df = df
+                for old_name, new_name in self.options['columns'].items():
+                    result_df = result_df.withColumnRenamed(old_name, new_name)
+                return result_df
+                
+            elif operation_type == 'add_column':
+                return df.withColumn(
+                    self.options['column_name'],
+                    expr(self.options['expression'])
+                )
+                
+            elif operation_type == 'array':
+                result_df = df
+                for column in self.options['columns']:
+                    # Handle both bracketed and non-bracketed strings
+                    cleaned = regexp_replace(col(column), r'[\[\]]', '')
+                    # Split on comma and trim whitespace
+                    result_df = result_df.withColumn(
+                        column,
+                        split(cleaned, ',\s*')
+                    )
+                return result_df
+                
+            elif operation_type == 'timestamp':
+                result_df = df
+                precision = self.options.get('precision', 'seconds')
+                input_type = self.options.get('input_type', 'unix')
+                output_format = self.options.get('format')
+                
+                for column in self.options['columns']:
+                    # Get the column's data type
+                    col_type = df.schema[column].dataType
+                    
+                    # Convert to timestamp based on input type
+                    if input_type == 'unix' and isinstance(col_type, (LongType, StringType)):
+                        # Input is a Unix timestamp
+                        if precision == 'seconds':
+                            result_df = result_df.withColumn(
+                                column,
+                                from_unixtime(col(column))
+                            )
+                        else:  # milliseconds
+                            result_df = result_df.withColumn(
+                                column,
+                                from_unixtime(col(column) / 1000)
+                            )
+                    
+                    # If output format is specified, format the timestamp
+                    if output_format:
+                        result_df = result_df.withColumn(
+                            column,
+                            date_format(col(column), output_format)
+                        )
+                        
+                return result_df
+                
+        except Exception as e:
+            raise Exception(f"Failed to apply {self.options['type']} operation: {str(e)}")
+            
+    @staticmethod
+    def name() -> str:
+        return "column" 

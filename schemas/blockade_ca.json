@@ -1,0 +1,47 @@
+{
+  "name": "blockade_ca",
+  "description": "Current Account blockade records schema",
+  "version": "1.0",
+  "fields": [
+    {
+      "name": "blockade_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Unique identifier for the blockade"
+    },
+    {
+      "name": "parameter_values_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Reference to parameter_values_ca.id"
+    },
+    {
+      "name": "start",
+      "type": "timestamp",
+      "nullable": false,
+      "description": "Start timestamp of the blockade"
+    },
+    {
+      "name": "end",
+      "type": "timestamp",
+      "nullable": true,
+      "description": "End timestamp of the blockade"
+    },
+    {
+      "name": "block_amount",
+      "type": "string",
+      "nullable": false,
+      "description": "Amount blocked"
+    }
+  ],
+  "primaryKey": ["blockade_id"],
+  "foreignKeys": [
+    {
+      "columns": ["parameter_values_id"],
+      "references": {
+        "table": "parameter_values_ca",
+        "columns": ["id"]
+      }
+    }
+  ]
+} 

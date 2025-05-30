@@ -1,0 +1,60 @@
+{
+  "name": "users",
+  "description": "User profile data schema",
+  "version": "1.0",
+  "fields": [
+    {
+      "name": "user_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Unique identifier for the user"
+    },
+    {
+      "name": "email",
+      "type": "string",
+      "nullable": false,
+      "description": "User's email address"
+    },
+    {
+      "name": "first_name",
+      "type": "string",
+      "nullable": true,
+      "description": "User's first name"
+    },
+    {
+      "name": "last_name",
+      "type": "string",
+      "nullable": true,
+      "description": "User's last name"
+    },
+    {
+      "name": "birth_date",
+      "type": "date",
+      "nullable": true,
+      "description": "User's date of birth"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp",
+      "nullable": false,
+      "description": "Timestamp when the user record was created"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp",
+      "nullable": false,
+      "description": "Timestamp when the user record was last updated"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "nullable": false,
+      "description": "User account status",
+      "constraints": {
+        "enum": ["active", "inactive", "suspended"]
+      }
+    }
+  ],
+  "partitionColumns": ["created_at"],
+  "primaryKey": ["user_id"]
+} 

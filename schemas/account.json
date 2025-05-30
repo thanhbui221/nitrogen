@@ -1,0 +1,64 @@
+{
+  "name": "account",
+  "description": "Account data schema",
+  "version": "1.0",
+  "fields": [
+    {
+      "name": "id",
+      "type": "string",
+      "nullable": false,
+      "description": "Unique identifier for the account"
+    },
+    {
+      "name": "smart_contract_version_id",
+      "type": "string",
+      "nullable": true,
+      "description": "Smart contract version identifier"
+    },
+    {
+      "name": "stakeholder_ids",
+      "type": "array",
+      "elementType": "string",
+      "nullable": true,
+      "description": "Array of stakeholder identifiers"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "nullable": false,
+      "description": "Account status",
+      "constraints": {
+        "enum": ["active", "inactive", "suspended", "closed"]
+      }
+    },
+    {
+      "name": "source_create_timestamp",
+      "type": "timestamp",
+      "nullable": false,
+      "description": "Timestamp when the account was created"
+    },
+    {
+      "name": "source_open_timestamp",
+      "type": "timestamp",
+      "nullable": true,
+      "description": "Timestamp when the account was opened"
+    },
+    {
+      "name": "permitted_denominations",
+      "type": "array",
+      "elementType": "string",
+      "nullable": true,
+      "description": "Array of permitted currency denominations"
+    },
+    {
+      "name": "acct_type",
+      "type": "string",
+      "nullable": false,
+      "description": "Account type",
+      "constraints": {
+        "enum": ["CA", "SA", "LOAN", "OD"]
+      }
+    }
+  ],
+  "primaryKey": ["id"]
+} 
