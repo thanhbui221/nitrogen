@@ -29,30 +29,10 @@ class CAAccountParameterValueTransformer(BaseTransformer):
         """
         super().__init__(options)
         self.logger = get_logger(__name__)
-        self.columns_to_cast = options.get('columns_to_cast', [
-            "margin_interest_rate",
-            "minimum_balance",
-            "minimum_balance_requirement",
-            "overdraft_original_limit"
-        ])
+        self.columns_to_cast = options.get('columns_to_cast')
         
-        self.param_type_map = options.get('param_type_map', {
-            "accrual_precision": "decimal_value",
-            "application_precision": "decimal_value",
-            "apply_interest_and_skip_end_of_day": "enumeration_value",
-            "denomination": "string_value",
-            "deposit_non_term_interest_code": "string_value",
-            "interest_application_day": "decimal_value",
-            "interest_application_frequency": "enumeration_value",
-            "interest_resolve_type": "string_value",
-            "margin_interest_rate": "decimal_value",
-            "minimum_balance": "decimal_value",
-            "minimum_balance_requirement": "decimal_value",
-            "overdraft_account_id": "string_value",
-            "overdraft_original_limit": "decimal_value",
-            "overdraft_limit_block": "enumeration_value",
-            "account_status_requested_by": "enumeration_value"
-        })
+        self.param_type_map = options.get('param_type_map')
+        
         self.logger.info(f"Initialized {self.name()} transformer with {len(self.columns_to_cast)} decimal columns to cast")
     
     def transform(self, df: DataFrame, **kwargs) -> DataFrame:

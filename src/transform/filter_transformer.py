@@ -29,12 +29,13 @@ class FilterTransformer(BaseTransformer):
             raise ValueError("Filter condition must be specified")
         self.condition = options["condition"]
     
-    def transform(self, df: DataFrame) -> DataFrame:
+    def transform(self, df: DataFrame, **kwargs) -> DataFrame:
         """
         Filter DataFrame rows based on the specified condition.
         
         Args:
             df: Input DataFrame
+            kwargs: Additional keyword arguments (not used by this transformer)
             
         Returns:
             Filtered DataFrame
