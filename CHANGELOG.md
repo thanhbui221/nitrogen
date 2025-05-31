@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Each join can now specify its own join type, conditions, and column selection
 - Improved column handling after joins with explicit column selection
 
+### Fixed
+- Improved Spark temporary directory handling:
+  - Added robust cleanup mechanism for temp files
+  - Configured Spark for better temp file management (spark.worker.cleanup.enabled, spark.storage.cleanupFilesAfterExecutorExit)
+  - Added graceful error handling during cleanup
+  - Fixed ShutdownHookManager temp directory deletion errors
+- Updated FilterTransformer to handle additional arguments gracefully
+
 ## [0.2.0] - 2025-05-30
 
 ### Added
