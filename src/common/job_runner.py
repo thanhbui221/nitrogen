@@ -6,6 +6,7 @@ from factory.component_factory import (
     loader_factory
 )
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,10 @@ class JobRunner:
         
         # Add default configurations for Windows
         builder = builder.config("spark.driver.host", "localhost")
+        
+        # Configure temporary directory using workspace root
+        temp_dir = os.path.join(os.getcwd(), "data", "temp")
+        builder = builder.config("spark.local.dir", temp_dir)
         
         # Use built-in Java implementation instead of native one
         builder = builder.config("spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version", "2")

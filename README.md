@@ -345,7 +345,7 @@ spark-submit \
 
 1. Database Extraction:
 ```yaml
-source:
+extract:
   type: database
   options:
     db_type: postgresql

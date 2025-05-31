@@ -6,7 +6,7 @@ from factory.component_factory import extractor_factory, transformer_factory, lo
 from extract.parquet_extractor import ParquetExtractor
 from extract.csv_extractor import CsvExtractor
 from extract.db_extractor import DbExtractor
-from transform.ca_account_parameter_value_transformer import ParameterValueTransformer
+from transform.ca_account_parameter_value_transformer import CAAccountParameterValueTransformer
 from transform.column_transformer import ColumnTransformer
 from transform.filter_transformer import FilterTransformer
 from transform.join_transformer import JoinTransformer
@@ -25,7 +25,7 @@ def register_components():
     transformer_factory.register("column", ColumnTransformer)  # For column operations
     transformer_factory.register("filter", FilterTransformer)  # For filtering rows
     transformer_factory.register("join", JoinTransformer)  # For joining DataFrames
-    transformer_factory.register("parameter_value", ParameterValueTransformer)
+    transformer_factory.register("ca_account_parameter_value", CAAccountParameterValueTransformer)
     
     # Register loaders
     loader_factory.register("parquet", ParquetLoader)

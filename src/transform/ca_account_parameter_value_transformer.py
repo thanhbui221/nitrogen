@@ -15,7 +15,7 @@ from common.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-class ParameterValueTransformer(BaseTransformer):
+class CAAccountParameterValueTransformer(BaseTransformer):
     """Transform parameter values into a structured JSON format with blockades."""
     
     def __init__(self, options: Dict[str, Any]):
@@ -81,35 +81,35 @@ class ParameterValueTransformer(BaseTransformer):
             Transformed DataFrame with JSON parameter values
         """
         self.logger.info(f"Starting {self.name()} transformation")
-        parameter_values_df = df  # Input is from parameter_values_ca source
-        input_count = parameter_values_df.count()
+        parameter_values_ca = df  # Input is from parameter_values_ca source
+        input_count = parameter_values_ca.count()
         self.logger.info(f"Processing {input_count} parameter value records")
-        self.logger.info(f"Parameter values columns: {parameter_values_df.columns}")
+        self.logger.info(f"Parameter values columns: {parameter_values_ca.columns}")
 
-        blockade_df = kwargs.get('blockade_ca')
-        if blockade_df is None:
+        blockade_ca = kwargs.get('blockade_ca')
+        if blockade_ca is None:
             self.logger.error("blockade_ca not provided in kwargs")
             raise ValueError("blockade_ca is required in kwargs")
             
-        blockade_count = blockade_df.count()
+        blockade_count = blockade_ca.count()
         self.logger.info(f"Found {blockade_count} blockade records")
-        self.logger.info(f"Blockade columns: {blockade_df.columns}")
+        self.logger.info(f"Blockade columns: {blockade_ca.columns}")
 
         # Fix decimal columns in parameter values DataFrame first
         self.logger.info("Converting decimal columns to normalized string format")
         for column in self.columns_to_cast:
-            if column in parameter_values_df.columns:
-                parameter_values_df = parameter_values_df.withColumn(
+            if column in parameter_values_ca.columns:
+                parameter_values_ca = parameter_values_ca.withColumn(
                     column,
                     to_plain_decimal(col(column))
                 )
-                null_count = parameter_values_df.filter(col(column).isNull()).count()
+                null_count = parameter_values_ca.filter(col(column).isNull()).count()
                 if null_count > 0:
                     self.logger.warning(f"Found {null_count} null values in column {column}")
 
         # Aggregate blockades into JSON array
         self.logger.info("Aggregating blockades into JSON array")
-        blockade_struct = blockade_df.groupBy("parameter_values_id").agg(
+        blockade_struct = blockade_ca.groupBy("parameter_values_id").agg(
             to_json(collect_list(struct(
                 col("blockade_id").cast("string").alias("blockade_id"),
                 col("start").cast("string").alias("start"),
@@ -120,9 +120,9 @@ class ParameterValueTransformer(BaseTransformer):
             
         # Join with blockades
         self.logger.info("Joining parameter values with blockades")
-        df_with_blockades = parameter_values_df.join(
+        df_with_blockades = parameter_values_ca.join(
             blockade_struct,
-            parameter_values_df["id"] == blockade_struct["parameter_values_id"],
+            parameter_values_ca["id"] == blockade_struct["parameter_values_id"],
             "left"
         )
         
@@ -170,7 +170,7 @@ class ParameterValueTransformer(BaseTransformer):
             to_json(map_from_entries(filtered))
         ).select(
             # Keep id for joining with account data
-            parameter_values_df["id"].alias("account_id"),
+            parameter_values_ca["id"].alias("account_id"),
             "parameter_values"
         )
 

@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Enhanced FilterTransformer to support complex SQL conditions with AND/OR operators and parentheses grouping
+- Improved FilterTransformer documentation with clear examples of complex conditions
+- Simplified FilterTransformer implementation and error handling
 - Enhanced JoinTransformer to support multiple sequential joins in a single transformation
 - Updated join configuration structure in YAML to use a list of joins
 - Each join can now specify its own join type, conditions, and column selection

@@ -31,7 +31,7 @@ dependencies:
       path: data/input/raw/parameter_values_ca
       schema: parameter_values_ca
       transform:
-        - type: parameter_value
+        - type: ca_account_parameter_value
           options:
             columns_to_cast:
               - margin_interest_rate
