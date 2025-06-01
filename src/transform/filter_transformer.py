@@ -15,29 +15,34 @@ class FilterTransformer(BaseTransformer):
         
         Args:
             options: Configuration options including:
-                - condition: SQL condition to filter rows
+                - condition: SQL condition to filter rows. Supports complex conditions using:
+                    - AND: for logical AND
+                    - OR: for logical OR
+                    - Parentheses () for grouping
+                  Examples:
+                    - "age > 25"
+                    - "age > 25 AND salary > 50000"
+                    - "(age > 25 OR experience > 5) AND salary > 50000"
         """
         super().__init__(options)
-        
-        if 'condition' not in self.options:
-            raise ValueError("'condition' is required in options")
-            
+        if "condition" not in options:
+            raise ValueError("Filter condition must be specified")
+        self.condition = options["condition"]
+    
     def transform(self, df: DataFrame, **kwargs) -> DataFrame:
         """
-        Filter DataFrame rows based on condition.
+        Filter DataFrame rows based on the specified condition.
         
         Args:
             df: Input DataFrame
-            kwargs: Additional arguments (not used)
+            kwargs: Additional keyword arguments (not used by this transformer)
             
         Returns:
-            DataFrame with filtered rows
+            Filtered DataFrame
         """
-        try:
-            return df.filter(self.options['condition'])
-        except Exception as e:
-            raise Exception(f"Failed to filter DataFrame: {str(e)}")
-            
-    @staticmethod
-    def name() -> str:
+        return df.filter(self.condition)
+    
+    @property
+    def name(self) -> str:
+        """Get transformer name."""
         return "filter" 

@@ -1,5 +1,5 @@
 """
-Transformer for processing parameter values with blockades.
+Transformer for processing parameter values of ca account.
 """
 
 from typing import Dict, Any
@@ -10,13 +10,12 @@ from pyspark.sql.functions import (
     map_from_entries, filter as filter_array, to_json, count
 )
 from common.base import BaseTransformer
-from common.utils.spark_utils import to_plain_decimal
 from common.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-class ParameterValueTransformer(BaseTransformer):
-    """Transform parameter values into a structured JSON format with blockades."""
+class CAAccountParameterValueTransformer(BaseTransformer):
+    """Transform parameter values of ca acocunt into a structured JSON format."""
     
     def __init__(self, options: Dict[str, Any]):
         """
@@ -24,36 +23,17 @@ class ParameterValueTransformer(BaseTransformer):
         
         Args:
             options: Configuration options including:
-                - columns_to_cast: List of decimal columns to fix
                 - param_type_map: Mapping of parameters to their types
         """
         super().__init__(options)
         self.logger = get_logger(__name__)
-        self.columns_to_cast = options.get('columns_to_cast', [
-            "margin_interest_rate",
-            "minimum_balance",
-            "minimum_balance_requirement",
-            "overdraft_original_limit"
-        ])
         
-        self.param_type_map = options.get('param_type_map', {
-            "accrual_precision": "decimal_value",
-            "application_precision": "decimal_value",
-            "apply_interest_and_skip_end_of_day": "enumeration_value",
-            "denomination": "string_value",
-            "deposit_non_term_interest_code": "string_value",
-            "interest_application_day": "decimal_value",
-            "interest_application_frequency": "enumeration_value",
-            "interest_resolve_type": "string_value",
-            "margin_interest_rate": "decimal_value",
-            "minimum_balance": "decimal_value",
-            "minimum_balance_requirement": "decimal_value",
-            "overdraft_account_id": "string_value",
-            "overdraft_original_limit": "decimal_value",
-            "overdraft_limit_block": "enumeration_value",
-            "account_status_requested_by": "enumeration_value"
-        })
-        self.logger.info(f"Initialized {self.name()} transformer with {len(self.columns_to_cast)} decimal columns to cast")
+        if 'param_type_map' not in options:
+            raise ValueError("param_type_map is required")
+            
+        self.param_type_map = options['param_type_map']
+        
+        self.logger.info(f"Initialized {self.name} transformer")
     
     def transform(self, df: DataFrame, **kwargs) -> DataFrame:
         """
@@ -61,12 +41,6 @@ class ParameterValueTransformer(BaseTransformer):
         
         Args:
             df: Input DataFrame loaded from parameter_values_ca source
-                Expected columns:
-                - id: Primary key for parameter values
-                - margin_interest_rate (optional)
-                - minimum_balance (optional)
-                - minimum_balance_requirement (optional)
-                - overdraft_original_limit (optional)
                 
             kwargs: Additional arguments including:
                 - blockade_ca: DataFrame loaded from blockade_ca source
@@ -80,36 +54,24 @@ class ParameterValueTransformer(BaseTransformer):
         Returns:
             Transformed DataFrame with JSON parameter values
         """
-        self.logger.info(f"Starting {self.name()} transformation")
-        parameter_values_df = df  # Input is from parameter_values_ca source
-        input_count = parameter_values_df.count()
+        self.logger.info(f"Starting {self.name} transformation")
+        parameter_values_ca = df  # Input is from parameter_values_ca source
+        input_count = parameter_values_ca.count()
         self.logger.info(f"Processing {input_count} parameter value records")
-        self.logger.info(f"Parameter values columns: {parameter_values_df.columns}")
+        self.logger.info(f"Parameter values columns: {parameter_values_ca.columns}")
 
-        blockade_df = kwargs.get('blockade_ca')
-        if blockade_df is None:
+        blockade_ca = kwargs.get('blockade_ca')
+        if blockade_ca is None:
             self.logger.error("blockade_ca not provided in kwargs")
             raise ValueError("blockade_ca is required in kwargs")
             
-        blockade_count = blockade_df.count()
+        blockade_count = blockade_ca.count()
         self.logger.info(f"Found {blockade_count} blockade records")
-        self.logger.info(f"Blockade columns: {blockade_df.columns}")
-
-        # Fix decimal columns in parameter values DataFrame first
-        self.logger.info("Converting decimal columns to normalized string format")
-        for column in self.columns_to_cast:
-            if column in parameter_values_df.columns:
-                parameter_values_df = parameter_values_df.withColumn(
-                    column,
-                    to_plain_decimal(col(column))
-                )
-                null_count = parameter_values_df.filter(col(column).isNull()).count()
-                if null_count > 0:
-                    self.logger.warning(f"Found {null_count} null values in column {column}")
+        self.logger.info(f"Blockade columns: {blockade_ca.columns}")
 
         # Aggregate blockades into JSON array
         self.logger.info("Aggregating blockades into JSON array")
-        blockade_struct = blockade_df.groupBy("parameter_values_id").agg(
+        blockade_struct = blockade_ca.groupBy("parameter_values_id").agg(
             to_json(collect_list(struct(
                 col("blockade_id").cast("string").alias("blockade_id"),
                 col("start").cast("string").alias("start"),
@@ -120,9 +82,9 @@ class ParameterValueTransformer(BaseTransformer):
             
         # Join with blockades
         self.logger.info("Joining parameter values with blockades")
-        df_with_blockades = parameter_values_df.join(
+        df_with_blockades = parameter_values_ca.join(
             blockade_struct,
-            parameter_values_df["id"] == blockade_struct["parameter_values_id"],
+            parameter_values_ca["id"] == blockade_struct["parameter_values_id"],
             "left"
         )
         
@@ -170,7 +132,7 @@ class ParameterValueTransformer(BaseTransformer):
             to_json(map_from_entries(filtered))
         ).select(
             # Keep id for joining with account data
-            parameter_values_df["id"].alias("account_id"),
+            parameter_values_ca["id"].alias("account_id"),
             "parameter_values"
         )
 
@@ -179,7 +141,7 @@ class ParameterValueTransformer(BaseTransformer):
         
         return result_df
     
-    @staticmethod
-    def name() -> str:
+    @property
+    def name(self) -> str:
         """Get transformer name."""
         return "ca_account_parameter_value" 

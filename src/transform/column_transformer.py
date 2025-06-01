@@ -11,11 +11,15 @@ from pyspark.sql.functions import (
 )
 from pyspark.sql.types import TimestampType, LongType, StringType
 from typing import Dict, Any, List
+from common.utils.spark_utils import to_plain_decimal
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ColumnTransformer(BaseTransformer):
     """Unified transformer for all column operations."""
     
-    VALID_TYPES = ['select', 'drop', 'rename', 'add_column', 'array', 'timestamp']
+    VALID_TYPES = ['select', 'drop', 'rename', 'add_column', 'array', 'timestamp', 'plain_decimal']
     
     def __init__(self, options: Dict[str, Any]):
         """
@@ -23,8 +27,9 @@ class ColumnTransformer(BaseTransformer):
         
         Args:
             options: Configuration options including:
-                - type: Operation type (select/drop/rename/add_column/array/timestamp)
+                - type: Operation type (select/drop/rename/add_column/array/timestamp/plain_decimal)
                 - columns: List/Dict of columns (for select/drop/rename/array/timestamp)
+                - columns_to_cast: List of columns to convert to plain decimal
                 - column_name: Name of new column (for add_column)
                 - expression: SQL expression (for add_column)
                 - precision: Timestamp precision (for timestamp)
@@ -55,6 +60,10 @@ class ColumnTransformer(BaseTransformer):
                 raise ValueError("'column_name' is required for add_column operation")
             if 'expression' not in self.options:
                 raise ValueError("'expression' is required for add_column operation")
+                
+        elif operation_type == 'plain_decimal':
+            if 'columns_to_cast' not in self.options:
+                raise ValueError("'columns_to_cast' is required for plain_decimal operation")
                 
     def transform(self, df: DataFrame, **kwargs) -> DataFrame:
         """
@@ -133,9 +142,24 @@ class ColumnTransformer(BaseTransformer):
                         
                 return result_df
                 
+            elif operation_type == 'plain_decimal':
+                result_df = df
+                logger.info("Converting decimal columns to normalized string format")
+                for column in self.options['columns_to_cast']:
+                    if column in df.columns:
+                        result_df = result_df.withColumn(
+                            column,
+                            to_plain_decimal(col(column))
+                        )
+                        null_count = result_df.filter(col(column).isNull()).count()
+                        if null_count > 0:
+                            logger.warning(f"Found {null_count} null values in column {column}")
+                return result_df
+                
         except Exception as e:
             raise Exception(f"Failed to apply {self.options['type']} operation: {str(e)}")
             
-    @staticmethod
-    def name() -> str:
+    @property
+    def name(self) -> str:
+        """Get transformer name."""
         return "column" 

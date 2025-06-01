@@ -8,10 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Enhanced FilterTransformer to support complex SQL conditions with AND/OR operators and parentheses grouping
+- Improved FilterTransformer documentation with clear examples of complex conditions
+- Simplified FilterTransformer implementation and error handling
 - Enhanced JoinTransformer to support multiple sequential joins in a single transformation
 - Updated join configuration structure in YAML to use a list of joins
 - Each join can now specify its own join type, conditions, and column selection
 - Improved column handling after joins with explicit column selection
+
+### Fixed
+- Improved Spark temporary directory handling:
+  - Added robust cleanup mechanism for temp files
+  - Configured Spark for better temp file management (spark.worker.cleanup.enabled, spark.storage.cleanupFilesAfterExecutorExit)
+  - Added graceful error handling during cleanup
+  - Fixed ShutdownHookManager temp directory deletion errors
+- Updated FilterTransformer to handle additional arguments gracefully
 
 ## [0.2.0] - 2025-05-30
 
