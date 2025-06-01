@@ -42,7 +42,6 @@ dependencies:
           options:
             type: plain_decimal
             columns_to_cast:
-              - margin_interest_rate
               - minimum_balance
               - minimum_balance_requirement
               - overdraft_original_limit
@@ -56,7 +55,6 @@ dependencies:
               interest_application_day: decimal_value
               interest_application_frequency: enumeration_value
               interest_resolve_type: string_value
-              margin_interest_rate: decimal_value
               minimum_balance: decimal_value
               minimum_balance_requirement: decimal_value
               overdraft_account_id: string_value

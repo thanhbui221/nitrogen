@@ -53,6 +53,7 @@ def setup_logging(
         file_handler = logging.FileHandler(log_file)
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
+    
 
 def get_logger(name: str) -> logging.Logger:
     """
