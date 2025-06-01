@@ -23,6 +23,13 @@ dependencies:
     options:
       path: data/input/raw/blockade_ca
       schema: blockade_ca
+      transform:
+        - type: column
+          options:
+            type: plain_decimal
+            columns_to_cast:
+              - block_amount
+
 
   # Main dependency that needs transformation
   parameter_values_ca:
@@ -31,16 +38,18 @@ dependencies:
       path: data/input/raw/parameter_values_ca
       schema: parameter_values_ca
       transform:
-        - type: ca_account_parameter_value
+        - type: column
           options:
+            type: plain_decimal
             columns_to_cast:
               - margin_interest_rate
               - minimum_balance
               - minimum_balance_requirement
               - overdraft_original_limit
+
+        - type: ca_account_parameter_value
+          options:
             param_type_map:
-              accrual_precision: decimal_value
-              application_precision: decimal_value
               apply_interest_and_skip_end_of_day: enumeration_value
               denomination: string_value
               deposit_non_term_interest_code: string_value

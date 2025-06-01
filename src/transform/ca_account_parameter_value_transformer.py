@@ -1,5 +1,5 @@
 """
-Transformer for processing parameter values with blockades.
+Transformer for processing parameter values of ca account.
 """
 
 from typing import Dict, Any
@@ -10,13 +10,12 @@ from pyspark.sql.functions import (
     map_from_entries, filter as filter_array, to_json, count
 )
 from common.base import BaseTransformer
-from common.utils.spark_utils import to_plain_decimal
 from common.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
 class CAAccountParameterValueTransformer(BaseTransformer):
-    """Transform parameter values into a structured JSON format with blockades."""
+    """Transform parameter values of ca acocunt into a structured JSON format."""
     
     def __init__(self, options: Dict[str, Any]):
         """
@@ -24,16 +23,17 @@ class CAAccountParameterValueTransformer(BaseTransformer):
         
         Args:
             options: Configuration options including:
-                - columns_to_cast: List of decimal columns to fix
                 - param_type_map: Mapping of parameters to their types
         """
         super().__init__(options)
         self.logger = get_logger(__name__)
-        self.columns_to_cast = options.get('columns_to_cast')
         
-        self.param_type_map = options.get('param_type_map')
+        if 'param_type_map' not in options:
+            raise ValueError("param_type_map is required")
+            
+        self.param_type_map = options['param_type_map']
         
-        self.logger.info(f"Initialized {self.name()} transformer with {len(self.columns_to_cast)} decimal columns to cast")
+        self.logger.info(f"Initialized {self.name} transformer")
     
     def transform(self, df: DataFrame, **kwargs) -> DataFrame:
         """
@@ -41,12 +41,6 @@ class CAAccountParameterValueTransformer(BaseTransformer):
         
         Args:
             df: Input DataFrame loaded from parameter_values_ca source
-                Expected columns:
-                - id: Primary key for parameter values
-                - margin_interest_rate (optional)
-                - minimum_balance (optional)
-                - minimum_balance_requirement (optional)
-                - overdraft_original_limit (optional)
                 
             kwargs: Additional arguments including:
                 - blockade_ca: DataFrame loaded from blockade_ca source
@@ -60,7 +54,7 @@ class CAAccountParameterValueTransformer(BaseTransformer):
         Returns:
             Transformed DataFrame with JSON parameter values
         """
-        self.logger.info(f"Starting {self.name()} transformation")
+        self.logger.info(f"Starting {self.name} transformation")
         parameter_values_ca = df  # Input is from parameter_values_ca source
         input_count = parameter_values_ca.count()
         self.logger.info(f"Processing {input_count} parameter value records")
@@ -74,18 +68,6 @@ class CAAccountParameterValueTransformer(BaseTransformer):
         blockade_count = blockade_ca.count()
         self.logger.info(f"Found {blockade_count} blockade records")
         self.logger.info(f"Blockade columns: {blockade_ca.columns}")
-
-        # Fix decimal columns in parameter values DataFrame first
-        self.logger.info("Converting decimal columns to normalized string format")
-        for column in self.columns_to_cast:
-            if column in parameter_values_ca.columns:
-                parameter_values_ca = parameter_values_ca.withColumn(
-                    column,
-                    to_plain_decimal(col(column))
-                )
-                null_count = parameter_values_ca.filter(col(column).isNull()).count()
-                if null_count > 0:
-                    self.logger.warning(f"Found {null_count} null values in column {column}")
 
         # Aggregate blockades into JSON array
         self.logger.info("Aggregating blockades into JSON array")
@@ -159,7 +141,7 @@ class CAAccountParameterValueTransformer(BaseTransformer):
         
         return result_df
     
-    @staticmethod
-    def name() -> str:
+    @property
+    def name(self) -> str:
         """Get transformer name."""
         return "ca_account_parameter_value" 

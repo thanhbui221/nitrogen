@@ -8,6 +8,7 @@ from factory.component_factory import (
 import logging
 import os
 import shutil
+import atexit
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,11 @@ class JobRunner:
     def __init__(self, config: JobConfig):
         self.config = config
         self.temp_dir = os.path.join(os.getcwd(), "data", "temp")
+        os.makedirs(self.temp_dir, exist_ok=True)
+        
+        # Register cleanup on normal Python exit
+        atexit.register(self._cleanup_temp_dir)
+        
         self.spark = self._create_spark_session()
         
     def _create_spark_session(self) -> SparkSession:
@@ -24,13 +30,11 @@ class JobRunner:
         # Add default configurations for Windows
         builder = builder.config("spark.driver.host", "localhost")
         
-        # Configure temporary directory using workspace root
-        os.makedirs(self.temp_dir, exist_ok=True)  # Create temp directory if it doesn't exist
-        
         # Configure Spark to handle temp directories
         builder = builder.config("spark.local.dir", self.temp_dir)
         builder = builder.config("spark.worker.cleanup.enabled", "true")
         builder = builder.config("spark.storage.cleanupFilesAfterExecutorExit", "true")
+        builder = builder.config("spark.cleaner.referenceTracking.cleanCheckpoints", "true")
         
         # Use built-in Java implementation instead of native one
         builder = builder.config("spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version", "2")
@@ -50,6 +54,10 @@ class JobRunner:
         """Clean up temporary directory after Spark session ends"""
         try:
             if os.path.exists(self.temp_dir):
+                # Wait a bit for Spark to finish its own cleanup
+                import time
+                time.sleep(1)
+                
                 # Remove all contents but keep the directory
                 for item in os.listdir(self.temp_dir):
                     item_path = os.path.join(self.temp_dir, item)
@@ -121,5 +129,7 @@ class JobRunner:
             logger.error(f"Error in job execution: {str(e)}")
             raise
         finally:
-            self.spark.stop()
-            self._cleanup_temp_dir() 
+            # Stop Spark first
+            if hasattr(self, 'spark') and self.spark is not None:
+                self.spark.stop()
+                self.spark = None 
