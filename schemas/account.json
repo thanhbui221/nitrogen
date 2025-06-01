@@ -17,9 +17,7 @@
     },
     {
       "name": "stakeholder_ids",
-      "type": "array",
-      "elementType": "string",
-      "nullable": true,
+      "type": "string",
       "description": "Array of stakeholder identifiers"
     },
     {
@@ -45,8 +43,7 @@
     },
     {
       "name": "permitted_denominations",
-      "type": "array",
-      "elementType": "string",
+      "type": "string",
       "nullable": true,
       "description": "Array of permitted currency denominations"
     },
