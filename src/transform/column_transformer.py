@@ -7,7 +7,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql.functions import (
     expr, from_unixtime, to_timestamp, 
     split, regexp_replace, when, col,
-    date_format
+    date_format, to_date
 )
 from pyspark.sql.types import TimestampType, LongType, StringType
 from typing import Dict, Any, List
@@ -145,7 +145,7 @@ class ColumnTransformer(BaseTransformer):
             elif operation_type == 'plain_decimal':
                 result_df = df
                 logger.info("Converting decimal columns to normalized string format")
-                for column in self.options['columns_to_cast']:
+                for column in self.options['columns']:
                     if column in df.columns:
                         result_df = result_df.withColumn(
                             column,
@@ -155,7 +155,19 @@ class ColumnTransformer(BaseTransformer):
                         if null_count > 0:
                             logger.warning(f"Found {null_count} null values in column {column}")
                 return result_df
-                
+
+            elif operation_type == 'to_date_format':
+                result_df = df
+                logger.info("Converting date columns to date type")
+                format = self.options.get('format', "yyyy-MM-dd")
+                for column in self.options['columns']:
+                    result_df = result_df.withColumn(
+                        column,
+                        to_date(split(col(column), ' ')[0], format)
+                    )
+                return result_df
+
+            
         except Exception as e:
             raise Exception(f"Failed to apply {self.options['type']} operation: {str(e)}")
             

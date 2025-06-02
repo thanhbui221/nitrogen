@@ -1,0 +1,179 @@
+name: loan_account_transform
+description: Transform Loan account data
+
+extract:
+  type: parquet
+  options:
+    path: data/input/raw/account
+    schema: account
+    columns:
+      - id
+      - smart_contract_version_id
+      - stakeholder_ids
+      - status
+      - source_create_timestamp
+      - source_open_timestamp
+      - permitted_denominations
+      - acct_type
+
+dependencies:
+  # Required dependencies first
+  auto_rollover_interest_schedule_plan_loan:
+    type: parquet
+    options:
+      path: data/input/raw/auto_rollover_interest_schedule_plan_loan
+      schema: auto_rollover_interest_schedule_plan_loan
+      transform:
+        - type: column
+          options:
+            type: to_date_format
+            columns:
+              - update_date
+        
+        - type: column
+          options:
+            type: plain_decimal
+            columns:
+              - spread_rate
+
+  fixed_interest_rate_loan:
+    type: parquet
+    options:
+      path: data/input/raw/fixed_interest_rate_loan
+      schema: fixed_interest_rate_loan
+      transform:
+        - type: column
+          options:
+            type: to_date_format
+            columns:
+              - start_date
+              - end_date
+        
+        - type: column
+          options:
+            type: plain_decimal
+            columns:
+              - rate
+
+
+  original_due_interest_dates_loan:
+    type: parquet
+    options:
+      path: data/input/raw/original_due_interest_dates_loan
+      schema: original_due_interest_dates_loan
+      transform:
+        - type: column
+          options:
+            type: to_date_format
+            columns:
+              - due_date
+
+  original_due_principal_records_loan:
+    type: parquet
+    options:
+      path: data/input/raw/original_due_principal_records_loan
+      schema: original_due_principal_records_loan
+      transform:
+        - type: column
+          options:
+            type: to_date_format
+            columns:
+              - original_due_principal_date
+        
+        - type: column
+          options:
+            type: plain_decimal
+            columns:
+              - due_principal_amount
+
+  # Main dependency that needs transformation
+  parameter_values_loan:
+    type: parquet
+    options:
+      path: data/input/raw/parameter_values_loan
+      schema: parameter_values_loan
+      transform:
+        - type: column
+          options:
+            type: plain_decimal
+            columns:
+              - maximum_interest_rate
+              - maximum_interest_rate
+              - penalty_interest_rate 
+              - penalty_principal_rate_multiplier
+              - principal
+
+        - type: loan_account_parameter_value
+          options:
+            param_type_map:
+              accrual_precision: decimal_value
+              application_precision: decimal_value
+              days_in_year: enumeration_value
+              debt_group: enumeration_value
+              interest_application_day: decimal_value
+              interest_application_frequency: enumeration_value
+              interest_resolve_type: string_value
+              minimum_balance: decimal_value
+              minimum_balance_requirement: decimal_value
+              overdraft_account_id: string_value
+              overdraft_original_limit: decimal_value
+              
+            requires:
+              - auto_rollover_interest_schedule_plan_loan
+              - fixed_interest_rate_loan
+              - original_due_interest_dates_loan
+              - original_due_principal_records_loan
+
+transform:
+  # First process the account data
+  - type: column
+    options:
+      type: array
+      columns:
+        - stakeholder_ids
+        - permitted_denominations
+  
+  - type: column
+    options:
+      type: timestamp
+      columns:
+        - source_create_timestamp
+        - source_open_timestamp
+      precision: seconds
+      input_type: timestamp
+      format: yyyy-MM-dd HH:mm:ss
+  
+  - type: filter
+    options:
+      condition: "acct_type = 'LOAN'"
+  
+  - type: column
+    options:
+      type: rename
+      columns:
+        acct_type: alias
+
+  # Then join with parameter_values
+  - type: join
+    options:
+      joins:
+        - right_df: parameter_values_loan
+          join_type: left
+          join_conditions:
+            - left: id
+              right: account_id
+
+  # Drop redundant columns using column transformer
+  - type: column
+    options:
+      type: drop
+      columns:
+        - account_id  # Drop the redundant account_id from parameter_values_loan after join
+
+load:
+  type: parquet
+  options:
+    path: data/output/staging/loan_account
+    mode: overwrite
+    partition_by: []
+    compression: snappy 

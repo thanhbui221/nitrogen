@@ -7,7 +7,8 @@ from pyspark.sql import DataFrame
 from pyspark.sql.functions import (
     col, lit, when, coalesce, first,
     array, arrays_zip, collect_list, struct, create_map, 
-    map_from_entries, filter as filter_array, to_json, count
+    map_from_entries, filter as filter_array, to_json, count,
+    date_format, sort_array, transform
 )
 from common.base import BaseTransformer
 from common.utils.logging_utils import get_logger
@@ -80,9 +81,115 @@ class LoanAccountParameterValueTransformer(BaseTransformer):
         if original_due_pincipal_records_loan is None:
             self.logger.error("original_due_pincipal_records_loan not provided in kwargs")
             raise ValueError("original_due_pincipal_records_loan is required in kwargs")
+        
+        auto_rollover_interest_schedule_plan_loan = auto_rollover_interest_schedule_plan_loan.groupBy("parameter_values_id").agg(
+            to_json(transform(sort_array(collect_list(struct(
+                "update_date",
+                "base_rate_code",
+                "spread_rate"
+            ))), 
+            lambda x: struct(
+                x["base_rate_code"].alias("base_rate_code"),
+                x["spread_rate"].alias("spread_rate"),
+                date_format(x["update_date"], "yyyy-MM-dd").alias("update_date")
+            ))).alias("auto_rollover_interest_schedule_plan_loan")
+        )
+
+        fixed_interest_rate_loan = fixed_interest_rate_loan.groupBy("parameter_values_id").agg(
+            to_json(first(struct(
+                "update_date",
+                "base_rate_code",
+                "spread_rate"
+            ))).alias("fixed_interest_rate_loan")
+        )
+
+        original_due_interest_dates_loan = original_due_interest_dates_loan.groupBy("parameter_values_id").agg(
+            to_json(sort_array(collect_list(struct(
+                date_format(col("due_date"), "yyyy-MM-dd"),
+            )))).alias("original_due_interest_dates_loan")
+        )
+
+        original_due_principal_records_loan = original_due_principal_records_loan.groupBy("parameter_values_id").agg(
+            to_json(transform(sort_array(collect_list(struct(
+                col("original_due_principal_date").alias("original_due_principal_date"),
+                col("due_principal_amount").alias("due_principal_amount")
+            ))), 
+            lambda x: struct(
+                x["due_principal_amount"].alias("due_principal_amount"),
+                date_format(x["original_due_principal_date"], "yyyy-MM-dd").alias("original_due_principal_date")
+            ))).alias("original_due_principal_records_loan")
+        )
+
+        join_df = parameter_values_loan.join(
+            auto_rollover_interest_schedule_plan_loan,
+            on="parameter_values_id",
+            how="left"
+        ).join(
+            fixed_interest_rate_loan,
+            on="parameter_values_id",
+            how="left"
+        ).join(
+            original_due_interest_dates_loan,
+            on="parameter_values_id",
+            how="left"
+        ).join(
+            original_due_principal_records_loan,
+            on="parameter_values_id",
+            how="left"
+        )
+
+        self.agg_fields = [
+            ("auto_rollover_interest_schedule_plan_loan", "auto_rollover_interest_schedule_plan_loan"),
+            ("fixed_interest_rate_loan", "fixed_interest_rate_loan"),
+            ("original_due_interest_dates_loan", "original_due_interest_dates_loan"),
+            ("original_due_principal_records_loan", "original_due_principal_records_loan")]
             
-    
+
+        self.logger.info("Building parameter value map")
+        outer_keys = []
+        outer_values = []
+        
+        for field, wrapper in self.param_type_map.items():
+            if wrapper == "string_value":
+                condition = col(field).isNotNull() & (col(field) != "")
+            elif wrapper == "decimal_value":
+                condition = col(field).isNotNull()
+            else:
+                condition = lit(True)
+                
+            outer_keys.append(
+                when(condition, lit(field)).otherwise(None)
+            )
+            outer_values.append(
+                when(condition, create_map(lit(wrapper), col(field)))
+                .otherwise(None)
+            )
+            
+        for field, col_name in self.agg_fields:
+            outer_keys.append(lit(field))
+            default_value = lit("[]") if col_name != "fixed_interest_rate_loan" else lit("{}")
+            outer_values.append(create_map(lit("string_value"), coalesce(col(col_name), default_value)))
+        
+        # Create final parameter values JSON
+        self.logger.info("Creating final parameter values JSON")
+        zipped = arrays_zip(array(*outer_keys), array(*outer_values))
+        filtered = filter_array(zipped, lambda x: x["0"].isNotNull())
+        
+        result_df = join_df.withColumn(
+            "parameter_values",
+            to_json(map_from_entries(filtered))
+        ).select(
+            "account_id",
+            "parameter_values"
+        )
+
+        output_count = result_df.count()
+        self.logger.info(f"Transformation complete. Output record count: {output_count}")
+        
+        return result_df
+        
+        
     @property
     def name(self) -> str:
         """Get transformer name."""
-        return "sa_account_parameter_value" 
+        return "loan_account_parameter_value" 

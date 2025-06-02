@@ -131,8 +131,7 @@ class CAAccountParameterValueTransformer(BaseTransformer):
             "parameter_values",
             to_json(map_from_entries(filtered))
         ).select(
-            # Keep id for joining with account data
-            parameter_values_ca["id"].alias("account_id"),
+            "account_id",
             "parameter_values"
         )
 
