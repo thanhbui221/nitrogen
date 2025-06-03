@@ -5,6 +5,7 @@ from transform.column_transformer import ColumnTransformer
 from transform.filter_transformer import FilterTransformer
 from transform.join_transformer import JoinTransformer
 from transform.ca_account_parameter_value_transformer import CAAccountParameterValueTransformer
+from transform.loan_account_parameter_value_transformer import LoanAccountParameterValueTransformer
 from load.parquet_loader import ParquetLoader
 
 class ExtractorFactory:
@@ -71,6 +72,7 @@ transformer_factory.register("column", ColumnTransformer)  # For column operatio
 transformer_factory.register("filter", FilterTransformer)  # For filtering rows
 transformer_factory.register("join", JoinTransformer)  # For joining DataFrames
 transformer_factory.register("ca_account_parameter_value", CAAccountParameterValueTransformer)
+transformer_factory.register("loan_account_parameter_value", LoanAccountParameterValueTransformer)
 
 # Register loaders
 loader_factory.register("parquet", ParquetLoader)  # Register with name "parquet" 

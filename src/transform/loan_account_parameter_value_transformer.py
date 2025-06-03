@@ -64,7 +64,7 @@ class LoanAccountParameterValueTransformer(BaseTransformer):
         auto_rollover_interest_schedule_plan_loan = kwargs.get('auto_rollover_interest_schedule_plan_loan')
         fixed_interest_rate_loan = kwargs.get('fixed_interest_rate_loan')
         original_due_interest_dates_loan = kwargs.get('original_due_interest_dates_loan')
-        original_due_pincipal_records_loan = kwargs.get('original_due_principal_records_loan')
+        original_due_principal_records_loan = kwargs.get('original_due_principal_records_loan')
         
         if auto_rollover_interest_schedule_plan_loan is None:
             self.logger.error("auto_rollover_interest_schedule_plan_loan not provided in kwargs")
@@ -78,9 +78,9 @@ class LoanAccountParameterValueTransformer(BaseTransformer):
             self.logger.error("original_due_interest_dates_loan not provided in kwargs")
             raise ValueError("original_due_interest_dates_loan is required in kwargs")
             
-        if original_due_pincipal_records_loan is None:
-            self.logger.error("original_due_pincipal_records_loan not provided in kwargs")
-            raise ValueError("original_due_pincipal_records_loan is required in kwargs")
+        if original_due_principal_records_loan is None:
+            self.logger.error("original_due_principal_records_loan not provided in kwargs")
+            raise ValueError("original_due_principal_records_loan is required in kwargs")
         
         auto_rollover_interest_schedule_plan_loan = auto_rollover_interest_schedule_plan_loan.groupBy("parameter_values_id").agg(
             to_json(transform(sort_array(collect_list(struct(
@@ -97,9 +97,9 @@ class LoanAccountParameterValueTransformer(BaseTransformer):
 
         fixed_interest_rate_loan = fixed_interest_rate_loan.groupBy("parameter_values_id").agg(
             to_json(first(struct(
-                "update_date",
-                "base_rate_code",
-                "spread_rate"
+                "start_date",
+                "end_date",
+                "rate"
             ))).alias("fixed_interest_rate_loan")
         )
 
@@ -122,19 +122,19 @@ class LoanAccountParameterValueTransformer(BaseTransformer):
 
         join_df = parameter_values_loan.join(
             auto_rollover_interest_schedule_plan_loan,
-            on="parameter_values_id",
+            parameter_values_loan["id"] == auto_rollover_interest_schedule_plan_loan["parameter_values_id"],
             how="left"
         ).join(
             fixed_interest_rate_loan,
-            on="parameter_values_id",
+            parameter_values_loan["id"] == fixed_interest_rate_loan["parameter_values_id"],
             how="left"
         ).join(
             original_due_interest_dates_loan,
-            on="parameter_values_id",
+            parameter_values_loan["id"] == original_due_interest_dates_loan["parameter_values_id"],
             how="left"
         ).join(
             original_due_principal_records_loan,
-            on="parameter_values_id",
+            parameter_values_loan["id"] == original_due_principal_records_loan["parameter_values_id"],
             how="left"
         )
 

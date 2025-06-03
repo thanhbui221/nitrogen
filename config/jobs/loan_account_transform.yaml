@@ -22,7 +22,7 @@ dependencies:
     type: parquet
     options:
       path: data/input/raw/auto_rollover_interest_schedule_plan_loan
-      schema: auto_rollover_interest_schedule_plan_loan
+      # schema: auto_rollover_interest_schedule_plan_loan
       transform:
         - type: column
           options:
@@ -40,7 +40,7 @@ dependencies:
     type: parquet
     options:
       path: data/input/raw/fixed_interest_rate_loan
-      schema: fixed_interest_rate_loan
+      # schema: fixed_interest_rate_loan
       transform:
         - type: column
           options:
@@ -60,7 +60,7 @@ dependencies:
     type: parquet
     options:
       path: data/input/raw/original_due_interest_dates_loan
-      schema: original_due_interest_dates_loan
+      # schema: original_due_interest_dates_loan
       transform:
         - type: column
           options:
@@ -72,7 +72,7 @@ dependencies:
     type: parquet
     options:
       path: data/input/raw/original_due_principal_records_loan
-      schema: original_due_principal_records_loan
+      # schema: original_due_principal_records_loan
       transform:
         - type: column
           options:
@@ -91,7 +91,7 @@ dependencies:
     type: parquet
     options:
       path: data/input/raw/parameter_values_loan
-      schema: parameter_values_loan
+      # schema: parameter_values_loan
       transform:
         - type: column
           options:
@@ -109,14 +109,23 @@ dependencies:
               accrual_precision: decimal_value
               application_precision: decimal_value
               days_in_year: enumeration_value
-              debt_group: enumeration_value
-              interest_application_day: decimal_value
-              interest_application_frequency: enumeration_value
-              interest_resolve_type: string_value
-              minimum_balance: decimal_value
-              minimum_balance_requirement: decimal_value
-              overdraft_account_id: string_value
-              overdraft_original_limit: decimal_value
+              debt_group: decimal_value
+              denomination: string_value
+              disbursement_account: string_value
+              fixed_interest_term: decimal_value
+              grace_period_for_interest: decimal_value
+              grace_period_for_principal: decimal_value
+              interest_repayment_method: enumeration_value
+              maximum_interest_rate: decimal_value
+              minimum_interest_rate: decimal_value
+              original_maturity_date: string_value
+              penalty_interest_rate: decimal_value
+              penalty_principal_rate_multiplier: decimal_value
+              principal: decimal_value
+              start_from_actual_due_date: enumeration_value
+              write_off: enumeration_value
+              # penalty_principal_rate: decimal_value
+              # skip_non_working_days: enumeration_value
               
             requires:
               - auto_rollover_interest_schedule_plan_loan
