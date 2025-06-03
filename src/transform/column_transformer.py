@@ -7,7 +7,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql.functions import (
     expr, from_unixtime, to_timestamp, 
     split, regexp_replace, when, col,
-    date_format
+    date_format, to_date
 )
 from pyspark.sql.types import TimestampType, LongType, StringType
 from typing import Dict, Any, List
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class ColumnTransformer(BaseTransformer):
     """Unified transformer for all column operations."""
     
-    VALID_TYPES = ['select', 'drop', 'rename', 'add_column', 'array', 'timestamp', 'plain_decimal']
+    VALID_TYPES = ['select', 'drop', 'rename', 'add_column', 'array', 'timestamp', 'plain_decimal', 'to_date_format']
     
     def __init__(self, options: Dict[str, Any]):
         """
@@ -27,9 +27,8 @@ class ColumnTransformer(BaseTransformer):
         
         Args:
             options: Configuration options including:
-                - type: Operation type (select/drop/rename/add_column/array/timestamp/plain_decimal)
-                - columns: List/Dict of columns (for select/drop/rename/array/timestamp)
-                - columns_to_cast: List of columns to convert to plain decimal
+                - type: Operation type (select/drop/rename/add_column/array/timestamp/plain_decimal/to_date_format)
+                - columns: List/Dict of columns (for select/drop/rename/array/timestamp/to_date_format)
                 - column_name: Name of new column (for add_column)
                 - expression: SQL expression (for add_column)
                 - precision: Timestamp precision (for timestamp)
@@ -62,8 +61,12 @@ class ColumnTransformer(BaseTransformer):
                 raise ValueError("'expression' is required for add_column operation")
                 
         elif operation_type == 'plain_decimal':
-            if 'columns_to_cast' not in self.options:
-                raise ValueError("'columns_to_cast' is required for plain_decimal operation")
+            if 'columns' not in self.options:
+                raise ValueError("'columns' is required for plain_decimal operation")
+        
+        elif operation_type == 'to_date_format':
+            if 'columns' not in self.options:
+                raise ValueError("'columns' is required for to_date_format operation")
                 
     def transform(self, df: DataFrame, **kwargs) -> DataFrame:
         """
@@ -145,7 +148,7 @@ class ColumnTransformer(BaseTransformer):
             elif operation_type == 'plain_decimal':
                 result_df = df
                 logger.info("Converting decimal columns to normalized string format")
-                for column in self.options['columns_to_cast']:
+                for column in self.options['columns']:
                     if column in df.columns:
                         result_df = result_df.withColumn(
                             column,
@@ -155,7 +158,19 @@ class ColumnTransformer(BaseTransformer):
                         if null_count > 0:
                             logger.warning(f"Found {null_count} null values in column {column}")
                 return result_df
-                
+
+            elif operation_type == 'to_date_format':
+                result_df = df
+                logger.info("Converting date columns to date type")
+                format = self.options.get('format', "yyyy-MM-dd")
+                for column in self.options['columns']:
+                    result_df = result_df.withColumn(
+                        column,
+                        to_date(split(col(column), ' ')[0], format)
+                    )
+                return result_df
+
+            
         except Exception as e:
             raise Exception(f"Failed to apply {self.options['type']} operation: {str(e)}")
             

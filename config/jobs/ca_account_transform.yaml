@@ -27,7 +27,7 @@ dependencies:
         - type: column
           options:
             type: plain_decimal
-            columns_to_cast:
+            columns:
               - block_amount
 
 
@@ -41,7 +41,7 @@ dependencies:
         - type: column
           options:
             type: plain_decimal
-            columns_to_cast:
+            columns:
               - minimum_balance
               - minimum_balance_requirement
               - overdraft_original_limit
